@@ -104,6 +104,94 @@ h1 {
   font-weight: bold;
 }
 
+.strip-card {
+  margin-bottom: 14px;
+  padding: 2px 12px 12px;
+  background: #fff8e7;
+  border: 3px solid #352d24;
+  box-shadow: 4px 4px 0 #352d24;
+}
+
+#level-label {
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  background: #352d24;
+  color: #f5cf45;
+}
+
+.helper-status {
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.helper-status code {
+  background: #f1e5c4;
+  padding: 0 3px;
+}
+
+.kills {
+  font-size: 11px;
+  margin: 0 0 10px;
+}
+
+.kills strong {
+  color: #dc2626;
+}
+
+.toggle {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.toggle input {
+  margin: 1px 0 0;
+  accent-color: #352d24;
+}
+
+.toggle small {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  line-height: 1.4;
+  color: #77674f;
+}
+
+.sic,
+.wake {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  border: 3px solid #352d24;
+  background: #f5cf45;
+  color: #352d24;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.sic:hover,
+.wake:hover {
+  background: #e9b932;
+}
+
+.sic:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.wake {
+  margin-bottom: 10px;
+  background: #fff;
+}
+
 .section-header {
   display: flex;
   align-items: center;

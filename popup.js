@@ -9,6 +9,26 @@ const tabLabel = document.getElementById("tab-label");
 
 const duck = document.getElementById("duck");
 
+const levelLabel = document.getElementById("level-label");
+const helperStatus = document.getElementById("helper-status");
+const wakeHelper = document.getElementById("wake-helper");
+const killsToday = document.getElementById("kills-today");
+const killsTotal = document.getElementById("kills-total");
+const huntMode = document.getElementById("hunt-mode");
+const sound = document.getElementById("sound");
+const huntNow = document.getElementById("hunt-now");
+
+const HELPER_STATUS = {
+  connected: "Living on your tab strip. Drag it onto a tab, or press KILL below, " +
+    "and it pecks that tab's close button.",
+  connecting: "Waking the duck up...",
+  missing: "Not installed. Run <code>helper\\install.cmd</code> in the extension " +
+    "folder, then reload the extension, to put the duck on your tab strip. " +
+    "Until then, tabs close straight away.",
+  disconnected: "The duck wandered off. Tabs close straight away for now.",
+  stopped: "You sent the duck away. Tabs close straight away for now."
+};
+
 const MOODS = {
   happy: {
     title: "QUACK! I'M HAPPY",
@@ -58,6 +78,23 @@ function updateUI(state) {
   duck.style.filter = state.mood === "exhausted"
     ? "grayscale(0.4)"
     : "none";
+
+  const onStrip = state.helper === "connected" && !state.napping;
+
+  helperStatus.innerHTML = state.napping
+    ? "Napping. Tabs close straight away until it wakes up."
+    : (HELPER_STATUS[state.helper] || HELPER_STATUS.connecting);
+  wakeHelper.hidden = !(state.napping ||
+    state.helper === "stopped" || state.helper === "disconnected");
+
+  levelLabel.textContent = `LV ${state.level}`;
+  killsToday.textContent = state.killsToday;
+  killsTotal.textContent = state.killsTotal;
+
+  huntMode.checked = state.prefs.huntMode;
+  sound.checked = state.prefs.sound;
+  huntMode.disabled = !onStrip;
+  huntNow.disabled = !onStrip;
 }
 
 function showError() {
@@ -95,8 +132,8 @@ async function loadTabs() {
 
     const closeButton = document.createElement("button");
     closeButton.className = "tab-close";
-    closeButton.textContent = "CLOSE";
-    closeButton.setAttribute("aria-label", `Close tab: ${tab.title}`);
+    closeButton.textContent = "KILL";
+    closeButton.setAttribute("aria-label", `Kill tab: ${tab.title}`);
 
     closeButton.addEventListener("click", async () => {
       if (tab.id === undefined) return;
@@ -108,9 +145,11 @@ async function loadTabs() {
         tabId: tab.id
       });
 
-      if (result?.success) {
+      // With the duck on the tab strip the tab closes a moment later, when
+      // the duck pecks it; the onRemoved listener below refreshes the list.
+      if (result?.success && !result.duck) {
         await refreshDashboard();
-      } else {
+      } else if (!result?.success) {
         closeButton.disabled = false;
       }
     });
@@ -141,6 +180,46 @@ async function refreshDashboard() {
     showError();
   }
 }
+
+function setPref(key, value) {
+  return chrome.runtime.sendMessage({ type: "SET_PREF", key, value });
+}
+
+huntMode.addEventListener("change", () => setPref("huntMode", huntMode.checked));
+sound.addEventListener("change", () => setPref("sound", sound.checked));
+
+huntNow.addEventListener("click", async () => {
+  huntNow.disabled = true;
+  const result = await chrome.runtime.sendMessage({ type: "HUNT_NOW" });
+
+  if (!result?.success) {
+    huntNow.textContent = "NOTHING TO KILL (ACTIVE, PINNED AND NOISY TABS ARE SAFE)";
+    setTimeout(() => {
+      huntNow.textContent = "SIC 'EM! KILL MY STALEST TAB";
+      huntNow.disabled = false;
+    }, 2500);
+    return;
+  }
+
+  setTimeout(() => {
+    huntNow.disabled = false;
+  }, 1500);
+});
+
+wakeHelper.addEventListener("click", async () => {
+  wakeHelper.disabled = true;
+  await chrome.runtime.sendMessage({ type: "WAKE_HELPER" });
+  wakeHelper.disabled = false;
+  await refreshDashboard();
+});
+
+let refreshTimer = null;
+
+// Tabs closed by the duck (or anything else) disappear from the list.
+chrome.tabs.onRemoved.addListener(() => {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(refreshDashboard, 150);
+});
 
 // Initial load
 refreshDashboard();
