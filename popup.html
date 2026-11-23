@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Killing Duck</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+
+  <main class="app">
+
+    <header>
+      <div>
+        <h1>KILLING DUCK</h1>
+        <p class="subtitle">Kills <s>You</s>, Kills Brain Rot</p>
+      </div>
+    </header>
+
+    <section class="duck-card">
+      <img src="assets/duck.svg" class="duck" id="duck" alt="Your killing duck">
+
+      <h2 id="duck-title">QUACK! I'M HAPPY</h2>
+      <p id="duck-message">Your browsing looks healthy.</p>
+    </section>
+
+    <section class="stats">
+
+      <div class="stat">
+        <span class="stat-icon" aria-hidden="true">📑</span>
+        <strong id="tab-count">0</strong>
+        <small>OPEN TABS</small>
+      </div>
+
+      <div class="stat">
+        <span class="stat-icon" aria-hidden="true">⏱</span>
+        <strong id="active-time">0m</strong>
+        <small>ACTIVE TIME</small>
+      </div>
+
+    </section>
+
+    <section class="tab-section">
+
+      <div class="section-header">
+        <h3>YOUR OPEN TABS</h3>
+        <span id="tab-label">0 tabs</span>
+      </div>
+
+      <div id="tab-list"></div>
+
+    </section>
+
+    <footer>
+      <p>Made with QUACK and good intentions.</p>
+    </footer>
+
+  </main>
+
+  <script src="popup.js"></script>
+
+</body>
+
+</html>

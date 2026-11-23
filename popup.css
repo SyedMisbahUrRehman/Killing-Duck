@@ -1,0 +1,186 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 340px;
+  margin: 0;
+  background: #f7efd9;
+  color: #352d24;
+  font-family: "Courier New", monospace;
+}
+
+.app {
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+h1 {
+  font-size: 17px;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+.subtitle {
+  font-size: 10px;
+  margin: 4px 0 0;
+  color: #8a7961;
+}
+
+/* The joke: "You" is crossed out with a bold red line */
+.subtitle s {
+  color: #352d24;
+  text-decoration-color: #dc2626;
+  text-decoration-thickness: 2px;
+}
+
+.pixel-icon {
+  font-size: 25px;
+}
+
+.duck-card {
+  text-align: center;
+  padding: 18px 12px;
+  background: #fff8e7;
+  border: 3px solid #352d24;
+  box-shadow: 4px 4px 0 #352d24;
+}
+
+.duck {
+  width: 100px;
+  height: 100px;
+  image-rendering: pixelated;
+  animation: bounce 1.5s steps(2) infinite;
+}
+
+.duck-card h2 {
+  font-size: 14px;
+}
+
+.duck-card p {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #77674f;
+}
+
+.stats {
+  display: flex;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.stat {
+  flex: 1;
+  padding: 12px 6px;
+  text-align: center;
+  background: #f5cf45;
+  border: 3px solid #352d24;
+  box-shadow: 3px 3px 0 #352d24;
+}
+
+.stat-icon,
+.stat strong,
+.stat small {
+  display: block;
+}
+
+.stat-icon {
+  font-size: 19px;
+}
+
+.stat strong {
+  margin: 5px 0;
+  font-size: 22px;
+}
+
+.stat small {
+  font-size: 9px;
+  font-weight: bold;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-header h3 {
+  font-size: 12px;
+}
+
+#tab-label {
+  font-size: 10px;
+  color: #8a7961;
+}
+
+#tab-list {
+  max-height: 185px;
+  overflow-y: auto;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 5px;
+  border-bottom: 1px dashed #c7b99d;
+}
+
+.tab-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.tab-close {
+  border: 2px solid #352d24;
+  background: #fff;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 10px;
+  padding: 4px 7px;
+}
+
+.tab-close:hover {
+  background: #f5cf45;
+}
+
+.tab-close:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.empty {
+  font-size: 11px;
+  text-align: center;
+  padding: 12px;
+  color: #8a7961;
+}
+
+footer {
+  text-align: center;
+  margin-top: 15px;
+  font-size: 9px;
+  color: #8a7961;
+}
+
+@keyframes bounce {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .duck {
+    animation: none;
+  }
+}
