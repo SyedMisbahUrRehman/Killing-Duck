@@ -377,7 +377,7 @@ async function settleJob(jobId, outcome) {
     if (!result.success) helper.port?.postMessage({ type: "close-failed", jobId });
   } else if (outcome === "spared") {
     helper.spared.set(job.tabId, Date.now());
-  } else if (outcome !== "cancel" && job.reason !== "hunt") {
+  } else if (job.reason !== "hunt") {
     // The user asked for this close, so do it even without the duck
     // (the window is minimised, the duck is napping, ...).
     await closeTabNow(job.tabId);
@@ -471,7 +471,7 @@ function connectHelper() {
   let port;
   try {
     port = chrome.runtime.connectNative(HELPER_NAME);
-  } catch (error) {
+  } catch {
     helper.status = "missing";
     return;
   }

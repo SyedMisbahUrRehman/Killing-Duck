@@ -13,7 +13,6 @@
 //
 // Build:  helper\install.cmd  (uses the C# 5 compiler that ships with Windows,
 //         so this file sticks to C# 5: no string interpolation, no ?. etc.)
-// Try it: KillingDuck.exe --demo   (no Chrome connection, pecks are pretend)
 
 using System;
 using System.Collections.Concurrent;
@@ -44,38 +43,16 @@ namespace KillingDuck
         public const string Version = "1.1.0";
 
         [STAThread]
-        static int Main(string[] args)
+        static int Main()
         {
             EnableDpiAwareness();
             Log.Open();
-
-            string sheet = ArgValue(args, "--sprites");
-            if (sheet != null)
-            {
-                Art.ExportSheet(sheet);
-                return 0;
-            }
-
-            string probe = ArgValue(args, "--probe");
-            if (probe != null)
-            {
-                File.WriteAllText(probe, StripWatcher.Describe());
-                return 0;
-            }
-
-            var options = new DemoOptions
-            {
-                Enabled = args.Contains("--demo"),
-                WindowTitle = ArgValue(args, "--window"),
-                KillIndex = ParseInt(ArgValue(args, "--demo-kill"), -1)
-            };
-
-            Log.Write("start v" + Version + " demo=" + options.Enabled);
+            Log.Write("start v" + Version);
 
             Application.EnableVisualStyles();
             try
             {
-                Application.Run(new DuckApp(options));
+                Application.Run(new DuckApp());
             }
             catch (Exception e)
             {
@@ -97,25 +74,8 @@ namespace KillingDuck
             try { Win32.SetProcessDPIAware(); } catch { }
         }
 
-        static string ArgValue(string[] args, string name)
-        {
-            int i = Array.IndexOf(args, name);
-            return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
-        }
-
-        static int ParseInt(string s, int fallback)
-        {
-            int v;
-            return int.TryParse(s, out v) ? v : fallback;
-        }
     }
 
-    sealed class DemoOptions
-    {
-        public bool Enabled;
-        public string WindowTitle;   // only live on the Chrome window whose title contains this
-        public int KillIndex;        // pretend-peck this tab a few seconds after start
-    }
 
     static class Log
     {
@@ -207,7 +167,6 @@ namespace KillingDuck
         [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr hwnd, int index);
         [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr hwnd, StringBuilder name, int max);
-        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int max);
         [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc callback, IntPtr lParam);
         [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
         [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hwnd, int cmd);
@@ -244,12 +203,6 @@ namespace KillingDuck
             return sb.ToString();
         }
 
-        public static string TitleOf(IntPtr hwnd)
-        {
-            var sb = new StringBuilder(512);
-            GetWindowText(hwnd, sb, sb.Capacity);
-            return sb.ToString();
-        }
     }
 
     // ------------------------------------------------------------------
@@ -344,9 +297,8 @@ namespace KillingDuck
         public volatile IntPtr Candidate;
         // Tab titles of the extension's last focused window. A window whose
         // tabs do not match belongs to another Chrome profile (or is
-        // incognito), so the duck stays out of it. null accepts any window.
-        public volatile string[] ProfileTitles;
-        public string WindowTitleFilter;
+        // incognito), so the duck stays out of it.
+        public volatile string[] ProfileTitles = new string[0];
 
         volatile Search pending;
         volatile IntPtr forced;
@@ -415,30 +367,19 @@ namespace KillingDuck
             if (cand != IntPtr.Zero && (home == null || home.Hwnd != cand))
             {
                 var s = Probe(cand);
-                if (s != null && s.Tabs.Count > 0 && Accepts(cand, s))
+                if (s != null && s.Tabs.Count > 0 && Accepts(s))
                 {
                     Home = s;
                     return;
                 }
             }
 
-            if (home == null && WindowTitleFilter != null)
-            {
-                foreach (IntPtr h in Chrome.Windows())
-                {
-                    if (Win32.TitleOf(h).IndexOf(WindowTitleFilter, StringComparison.OrdinalIgnoreCase) < 0) continue;
-                    var s = Probe(h);
-                    if (s != null && s.Tabs.Count > 0) Home = s;
-                    break;
-                }
-                return;
-            }
 
             if (home == null)
             {
                 // Nothing focused yet: look for the profile's last focused window.
                 var titles = ProfileTitles;
-                if (titles != null && titles.Length > 0 && (DateTime.Now - lastScan).TotalSeconds > 2)
+                if (titles.Length > 0 && (DateTime.Now - lastScan).TotalSeconds > 2)
                 {
                     lastScan = DateTime.Now;
                     IntPtr h = FindByTitles(titles);
@@ -464,13 +405,9 @@ namespace KillingDuck
             if (fresh != null) Home = fresh;
         }
 
-        bool Accepts(IntPtr hwnd, Strip s)
+        bool Accepts(Strip s)
         {
-            if (WindowTitleFilter != null)
-                return Win32.TitleOf(hwnd).IndexOf(WindowTitleFilter, StringComparison.OrdinalIgnoreCase) >= 0;
-
             var titles = ProfileTitles;
-            if (titles == null) return true;
             if (titles.Length == 0) return false;
             return MatchScore(s, titles) >= Needed(titles.Length, s.Tabs.Count);
         }
@@ -661,28 +598,6 @@ namespace KillingDuck
                 (int)Math.Round(r.Width), (int)Math.Round(r.Height));
         }
 
-        // Text dump of every Chrome window's tab strip, for troubleshooting.
-        public static string Describe()
-        {
-            var sb = new StringBuilder();
-            var w = new StripWatcher();
-            foreach (IntPtr h in Chrome.Windows())
-            {
-                Win32.RECT wr;
-                Win32.GetWindowRect(h, out wr);
-                sb.AppendLine("window " + h + " '" + Win32.TitleOf(h) + "' rect=" + wr.Left + "," + wr.Top + "," + (wr.Right - wr.Left) + "x" + (wr.Bottom - wr.Top));
-                var s = w.Probe(h);
-                if (s == null)
-                {
-                    sb.AppendLine("  no tab strip");
-                    continue;
-                }
-                sb.AppendLine("  region=" + s.Region + " walk=" + s.WalkLeft + ".." + s.WalkRight);
-                foreach (var t in s.Tabs)
-                    sb.AppendLine("  tab '" + t.Name + "' rect=" + t.Rect + " close=" + t.Close);
-            }
-            return sb.ToString();
-        }
     }
 
     // ------------------------------------------------------------------
@@ -797,12 +712,7 @@ namespace KillingDuck
             object v;
             if (!d.TryGetValue(key, out v)) return null;
             var arr = v as object[];
-            if (arr == null)
-            {
-                var list = v as System.Collections.ArrayList;
-                if (list == null) return null;
-                arr = list.ToArray();
-            }
+            if (arr == null) return null;
             return arr.Select(x => x == null ? "" : x.ToString()).ToArray();
         }
     }
@@ -997,7 +907,6 @@ namespace KillingDuck
         public const double AnchorX = 9.5;              // between the feet
         public const double StrikeReach = 24 - AnchorX; // beak tip during a peck
         public const int StrikeBeakRow = 7;             // beak centre line during a peck
-        public const int HeadRow = 4;                   // roughly the eye line
 
         public static readonly Color Ink = Hex("352D24");
         public static readonly Color Cream = Hex("FFF8E7");
@@ -1215,41 +1124,6 @@ namespace KillingDuck
             return bmp;
         }
 
-        // Writes every pose to a PNG, on a dark and a light tab-strip colour.
-        public static void ExportSheet(string path)
-        {
-            const int s = 6;
-            var poses = new List<Pose>();
-            poses.Add(new Pose());
-            poses.Add(new Pose { Legs = Legs.WalkA });
-            poses.Add(new Pose { Bob = true });
-            poses.Add(new Pose { Legs = Legs.WalkB });
-            poses.Add(new Pose { Head = HeadPose.Windup });
-            poses.Add(new Pose { Head = HeadPose.Strike });
-            poses.Add(new Pose { Quack = true });
-            poses.Add(new Pose { Wing = Wing.Up, Legs = Legs.Dangle, Quack = true });
-            poses.Add(new Pose { Wing = Wing.Down, Legs = Legs.Dangle });
-            poses.Add(new Pose { Sit = true, Eyes = Eyes.Closed });
-            poses.Add(new Pose { Eyes = Eyes.Tired });
-            poses.Add(new Pose { Gear = 1 });
-            poses.Add(new Pose { Gear = 2, Head = HeadPose.Strike });
-
-            int cell = W * s + 12;
-            using (var sheet = new Bitmap(cell * poses.Count, (H * s + 12) * 2, PixelFormat.Format32bppArgb))
-            using (var g = Graphics.FromImage(sheet))
-            {
-                g.FillRectangle(new SolidBrush(Hex("7A1F4F")), 0, 0, sheet.Width, sheet.Height / 2);
-                g.FillRectangle(new SolidBrush(Hex("DEE1E6")), 0, sheet.Height / 2, sheet.Width, sheet.Height / 2);
-                for (int i = 0; i < poses.Count; i++)
-                {
-                    var f = Render(Compose(poses[i]), s, false);
-                    g.DrawImage(f, i * cell + 6, 6, f.Width, f.Height);
-                    var l = Render(Compose(poses[i]), s, true);
-                    g.DrawImage(l, i * cell + 6, H * s + 18, l.Width, l.Height);
-                }
-                sheet.Save(path, ImageFormat.Png);
-            }
-        }
     }
 
     // Tiny 5-pixel-tall font for speech bubbles.
@@ -1298,11 +1172,6 @@ namespace KillingDuck
             Add('!', "#", "#", "#", ".", "#");
             Add('?', "##.", "..#", ".#.", "...", ".#.");
             Add('+', "...", ".#.", "###", ".#.", "...");
-            Add('-', "...", "...", "###", "...", "...");
-            Add('.', ".", ".", ".", ".", "#");
-            Add(',', "..", "..", "..", ".#", "#.");
-            Add(':', ".", "#", ".", "#", ".");
-            Add('\'', "#", "#", ".", ".", ".");
             Add(' ', "..", "..", "..", "..", "..");
         }
 
@@ -1622,7 +1491,6 @@ namespace KillingDuck
             new PeckStep(HeadPose.Normal, 0.20, 0)
         };
 
-        readonly DemoOptions demo;
         readonly Overlay overlay;
         readonly StripWatcher watcher = new StripWatcher();
         readonly NativeHost host;
@@ -1659,7 +1527,6 @@ namespace KillingDuck
 
         readonly Queue<Job> jobs = new Queue<Job>();
         Job job;
-        int demoJobs;
 
         readonly List<Particle> parts = new List<Particle>();
 
@@ -1673,9 +1540,8 @@ namespace KillingDuck
 
         double K { get { return scale / 2.0; } }
 
-        public DuckApp(DemoOptions options)
+        public DuckApp()
         {
-            demo = options;
             Sfx.Init();
 
             overlay = new Overlay();
@@ -1685,20 +1551,11 @@ namespace KillingDuck
             overlay.RightClicked += OnRightClicked;
             BuildMenu();
 
-            watcher.WindowTitleFilter = demo.WindowTitle;
-            watcher.ProfileTitles = demo.Enabled ? null : new string[0];
             watcher.Start();
 
-            if (!demo.Enabled)
-            {
-                host = new NativeHost();
-                host.Start();
-                host.Send(Json.Msg("ready", "version", Program.Version));
-            }
-            else if (demo.KillIndex >= 0)
-            {
-                nextChatter = 999;
-            }
+            host = new NativeHost();
+            host.Start();
+            host.Send(Json.Msg("ready", "version", Program.Version));
 
             timer.Interval = 15;
             timer.Tick += delegate { Tick(); };
@@ -1718,22 +1575,12 @@ namespace KillingDuck
 
             try
             {
-                if (host != null)
+                Dictionary<string, object> m;
+                while (host.Inbox.TryDequeue(out m)) Handle(m);
+                if (host.Closed)
                 {
-                    Dictionary<string, object> m;
-                    while (host.Inbox.TryDequeue(out m)) Handle(m);
-                    if (host.Closed)
-                    {
-                        Quit(null);
-                        return;
-                    }
-                }
-
-                // Demo: a quick peck at 4 s, then a hunt on the next tab.
-                if (demo.Enabled && demo.KillIndex >= 0 && strip != null)
-                {
-                    if (T > 4 && demoJobs == 0) QueueDemoJob(demo.KillIndex);
-                    else if (T > 7.5 && demoJobs == 1 && job == null) QueueDemoJob(demo.KillIndex + 1);
+                    Quit(null);
+                    return;
                 }
 
                 PickCandidate();
@@ -1851,14 +1698,6 @@ namespace KillingDuck
                     Reason = Json.Str(m, "reason") ?? "user"
                 });
             }
-            else if (type == "cancel")
-            {
-                string id = Json.Str(m, "jobId");
-                if (job != null && job.Id == id && !job.Pecked) Abort("cancel");
-                var keep = jobs.Where(j => j.Id != id).ToList();
-                jobs.Clear();
-                foreach (var j in keep) jobs.Enqueue(j);
-            }
             else if (type == "close-failed")
             {
                 Say("HUH?", 1.5);
@@ -1870,29 +1709,11 @@ namespace KillingDuck
             }
         }
 
-        void Send(Dictionary<string, object> m)
-        {
-            if (host != null) host.Send(m);
-            else Log.Write("demo send: " + new JavaScriptSerializer().Serialize(m));
-        }
 
         // --------------------------------------------------------------
         // Kill jobs
         // --------------------------------------------------------------
 
-        void QueueDemoJob(int index)
-        {
-            if (strip == null || index < 0 || index >= strip.Tabs.Count) return;
-            demoJobs++;
-            jobs.Enqueue(new Job
-            {
-                Id = "demo-" + demoJobs,
-                Index = index,
-                Title = strip.Tabs[index].Name,
-                Titles = strip.Names(),
-                Reason = demoJobs % 2 == 1 ? "user" : "hunt"
-            });
-        }
 
         void StartJob(Job j)
         {
@@ -2047,7 +1868,7 @@ namespace KillingDuck
             job.Pecked = true;
             Shatter();
             FloatText("+1", job.Target.X, job.Target.Y - 4 * scale, Art.Red);
-            Send(Json.Msg("pecked", "jobId", job.Id));
+            host.Send(Json.Msg("pecked", "jobId", job.Id));
         }
 
         void FinishJob()
@@ -2066,7 +1887,7 @@ namespace KillingDuck
         void Abort(string reason)
         {
             if (job == null) return;
-            Send(Json.Msg("abort", "jobId", job.Id, "reason", reason));
+            host.Send(Json.Msg("abort", "jobId", job.Id, "reason", reason));
             if (job.Picture != null) job.Picture.Dispose();
             job = null;
             if (reason == "spared")
@@ -2077,7 +1898,7 @@ namespace KillingDuck
             else
             {
                 SetIdle(1.5);
-                if (reason != "cancel" && reason != "napping") Say("?", 1.2);
+                if (reason != "napping") Say("?", 1.2);
             }
         }
 
@@ -2367,7 +2188,6 @@ namespace KillingDuck
         void OnPressed(int x, int y)
         {
             if (!DuckBounds().Contains(x, y)) return;
-            if (demo.Enabled) Log.Write("press " + x + "," + y);
             pressed = true;
             dragging = false;
             pressX = x;
@@ -2473,15 +2293,7 @@ namespace KillingDuck
             Say("ON IT!", 1.2);
             Sfx.Play(Sfx.Quack);
             quackUntil = T + 0.3;
-            if (host != null)
-            {
-                host.Send(Json.Msg("drop", "index", index, "name", tab.Name, "names", strip.Names()));
-            }
-            else
-            {
-                demoJobs++;
-                jobs.Enqueue(new Job { Id = "demo-" + demoJobs, Index = index, Title = tab.Name, Titles = strip.Names(), Reason = "drop" });
-            }
+            host.Send(Json.Msg("drop", "index", index, "name", tab.Name, "names", strip.Names()));
         }
 
         void Clicked()
@@ -2525,14 +2337,14 @@ namespace KillingDuck
             sound.Click += delegate
             {
                 Sfx.On = !Sfx.On;
-                Send(Json.Msg("setting", "sound", Sfx.On));
+                host.Send(Json.Msg("setting", "sound", Sfx.On));
             };
             var nap = new ToolStripMenuItem("Nap for 30 minutes");
             nap.Click += delegate
             {
                 napUntil = T + 30 * 60;
                 if (job != null && !job.Pecked) Abort("napping");
-                Send(Json.Msg("nap", "minutes", 30));
+                host.Send(Json.Msg("nap", "minutes", 30));
             };
             var quit = new ToolStripMenuItem("Send the duck away until Chrome restarts");
             quit.Click += delegate { Quit("user"); };
@@ -2547,7 +2359,7 @@ namespace KillingDuck
 
         void Quit(string reason)
         {
-            if (reason != null) Send(Json.Msg("bye", "reason", reason));
+            if (reason != null) host.Send(Json.Msg("bye", "reason", reason));
             timer.Stop();
             overlay.Hide();
             ExitThread();

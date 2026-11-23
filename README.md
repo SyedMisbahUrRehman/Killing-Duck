@@ -80,9 +80,7 @@ the tab. A spared tab is safe for 30 minutes. Chrome's
   extension, and the extension calls `chrome.tabs.remove`. If the duck cannot
   reach the tab (window minimised, duck napping), a close you asked for
   happens straight away and a hunt is skipped.
-- `KillingDuck.exe --demo` runs it without Chrome's connection (pecks are
-  pretend). `--probe out.txt` dumps what it sees of each Chrome window's tabs.
-  It logs to `%LOCALAPPDATA%\KillingDuck\helper.log`.
+- It logs start-up and errors to `%LOCALAPPDATA%\KillingDuck\helper.log`.
 
 The extension's ID is pinned by the `key` field in `manifest.json`
 (`foifgpacdfdginklojklodfnoljjhgkj`), because the helper registration only

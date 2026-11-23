@@ -24,10 +24,11 @@ Get-Process KillingDuck -ErrorAction SilentlyContinue | Stop-Process -Force -Err
 Start-Sleep -Milliseconds 300
 
 Write-Host 'Building KillingDuck.exe ...'
-& $csc /nologo /target:winexe /optimize+ /platform:anycpu "/out:$exe" `
+# csc.rsp already references System, System.Drawing, Windows Forms and
+# System.Web.Extensions; UI Automation and WindowsBase live in the WPF folder.
+& $csc /nologo /target:winexe /optimize+ "/out:$exe" `
     "/lib:$(Join-Path $framework 'WPF')" `
-    /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll `
-    /r:System.Web.Extensions.dll /r:UIAutomationClient.dll /r:UIAutomationTypes.dll /r:WindowsBase.dll `
+    /r:UIAutomationClient.dll /r:UIAutomationTypes.dll /r:WindowsBase.dll `
     $source
 if ($LASTEXITCODE -ne 0) { throw 'The build failed.' }
 
