@@ -162,8 +162,14 @@ function addDays(dayKey, days) {
 }
 
 async function getPrefs() {
-  const data = await chrome.storage.local.get(Object.keys(DEFAULT_PREFS));
-  return { ...DEFAULT_PREFS, ...data };
+  const { consentedAt, ...data } =
+    await chrome.storage.local.get([...Object.keys(DEFAULT_PREFS), "consentedAt"]);
+  const prefs = { ...DEFAULT_PREFS, ...data, consented: Boolean(consentedAt) };
+
+  // Until the user agrees on welcome.html to what the duck reads and keeps,
+  // it is off whatever the switch says: nothing is tracked or shown.
+  if (!prefs.consented) prefs.enabled = false;
+  return prefs;
 }
 
 // Kills, minute ticks and focus sessions can land at the same moment, and
@@ -421,6 +427,12 @@ async function isEnabled() {
 }
 
 async function setEnabled(on) {
+  // Switching on before agreeing to the disclosure shows it instead.
+  if (on && !(await getPrefs()).consented) {
+    await openWelcome();
+    return { success: false, needsConsent: true };
+  }
+
   const settings = await getSettings();
   const today = getTodayKey();
 
@@ -460,6 +472,24 @@ async function setEnabled(on) {
 
   await broadcastState();
   return { success: true, enabled: on };
+}
+
+async function giveConsent() {
+  await chrome.storage.local.set({ consentedAt: Date.now() });
+  return setEnabled(true);
+}
+
+// Opens the first-run disclosure, or brings an open one to the front.
+async function openWelcome() {
+  const url = chrome.runtime.getURL("welcome.html");
+  const open = (await chrome.tabs.query({})).find(tab => tab.url === url);
+
+  if (open) {
+    await chrome.tabs.update(open.id, { active: true });
+    await chrome.windows.update(open.windowId, { focused: true });
+  } else {
+    await chrome.tabs.create({ url });
+  }
 }
 
 // A focus session whose end passed while Chrome or the worker was asleep
@@ -1086,7 +1116,10 @@ getPrefs()
 
 // Register all event listeners at the top level so Chrome can wake the
 // service worker for them.
-chrome.runtime.onInstalled.addListener(scheduleBroadcast);
+chrome.runtime.onInstalled.addListener(async () => {
+  scheduleBroadcast();
+  if (!(await getPrefs()).consented) await openWelcome();
+});
 chrome.runtime.onStartup.addListener(scheduleBroadcast);
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -1201,6 +1234,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // anything on its own.
   if (message.type === "CLOSE_CURRENT_TAB" && sender.tab?.id !== undefined) {
     requestClose(sender.tab.id, "user").then(sendResponse);
+    return true;
+  }
+
+  if (message.type === "GIVE_CONSENT") {
+    giveConsent().then(sendResponse);
     return true;
   }
 

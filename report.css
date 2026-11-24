@@ -79,7 +79,8 @@ h1 {
   color: var(--ink-2);
 }
 
-.off-card button {
+.off-card button,
+.consent button {
   padding: 10px 20px;
   border: 3px solid var(--ink);
   background: #f28b27;
@@ -91,8 +92,45 @@ h1 {
   box-shadow: 3px 3px 0 var(--ink);
 }
 
-.off-card button:hover {
+.off-card button:hover,
+.consent button:hover:not(:disabled) {
   background: #e98b28;
+}
+
+/* First-run disclosure (welcome.html) */
+
+.page.welcome {
+  max-width: 680px;
+}
+
+.welcome .card p,
+.welcome li {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.welcome h3 {
+  font-size: 13px;
+  margin: 18px 0 6px;
+}
+
+.welcome ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.welcome li {
+  margin-bottom: 6px;
+}
+
+.consent {
+  margin-top: 22px;
+  text-align: center;
+}
+
+.consent button:disabled {
+  background: var(--yellow);
+  cursor: default;
 }
 
 /* Stat tiles */

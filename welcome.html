@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Killing Duck</title>
+  <link rel="stylesheet" href="report.css">
+</head>
+
+<body>
+
+  <main class="page welcome">
+
+    <header class="top">
+      <img src="assets/duck.svg" class="duck" alt="">
+      <div>
+        <h1>KILLING DUCK</h1>
+        <p class="subtitle">Kills <s>You</s>, Kills Brain Rot</p>
+      </div>
+    </header>
+
+    <section class="card" aria-labelledby="data-title">
+
+      <h2 id="data-title">BEFORE THE DUCK WAKES UP</h2>
+
+      <p>To do its job, the duck needs to look at your browsing. This is
+        everything it reads and keeps.</p>
+
+      <h3>What it reads</h3>
+      <ul>
+        <li><strong>Your open tabs:</strong> how many there are, and their
+          titles and web addresses. It uses them to count tabs, to list them
+          in the popup so you can close them, and to spot sites on your brain
+          rot list.</li>
+        <li><strong>Whether you are at the computer:</strong> Chrome tells it
+          if the keyboard or mouse was used in the last 2 minutes, so only
+          active time counts. It never sees what you type or click.</li>
+        <li><strong>Web pages:</strong> it draws its warnings on top of them.
+          During a focus session it pauses videos on brain rot sites. It does
+          not read what is on your pages.</li>
+      </ul>
+
+      <h3>What it keeps</h3>
+      <ul>
+        <li>For each of the last 60 days: active browsing minutes, minutes on
+          brain rot sites, tabs killed and focus sessions. Plus your XP,
+          streak and settings.</li>
+        <li>It keeps no list of the sites you visit.</li>
+      </ul>
+
+      <h3>Where it goes</h3>
+      <ul>
+        <li>Nowhere. Everything stays in Chrome's storage on this computer.
+          There is no account, no server, no analytics and no ads.</li>
+        <li>If you install the optional Windows tab strip companion, the
+          titles of the tabs in your focused window are passed to that
+          program on this computer, so the duck can find the tab to peck.</li>
+        <li>Removing the extension deletes all of it.</li>
+      </ul>
+
+      <div class="consent">
+        <button type="button" id="agree">I AGREE, WAKE THE DUCK</button>
+        <p class="hint" id="consent-note" role="status">Until you agree, the duck
+          stays off and tracks nothing.</p>
+      </div>
+
+    </section>
+
+    <footer>
+      <p>Changed your mind later? Switch the duck off in its popup, or remove
+        it on chrome://extensions.</p>
+    </footer>
+
+  </main>
+
+  <script src="welcome.js"></script>
+
+</body>
+
+</html>

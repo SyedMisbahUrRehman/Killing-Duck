@@ -5,7 +5,12 @@ $ErrorActionPreference = 'Stop'
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $hostName = 'com.killingduck.tabstrip'
-$extensionId = 'foifgpacdfdginklojklodfnoljjhgkj'   # fixed by "key" in ../manifest.json
+# Extension IDs the helper answers to. The first is the unpacked copy, fixed
+# by "key" in ../manifest.json. The second is the Chrome Web Store copy.
+$extensionIds = @(
+    'foifgpacdfdginklojklodfnoljjhgkj',
+    'bcebhbmffhngbmdigmkfgeiecpmbaale'
+)
 
 $framework = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319'
 if (-not (Test-Path (Join-Path $framework 'csc.exe'))) {
@@ -38,7 +43,7 @@ $manifest = [ordered]@{
     description     = 'Killing Duck tab strip companion'
     path            = $exe
     type            = 'stdio'
-    allowed_origins = @("chrome-extension://$extensionId/")
+    allowed_origins = @($extensionIds | ForEach-Object { "chrome-extension://$_/" })
 }
 # Chrome wants UTF-8 without a byte order mark.
 [System.IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json), (New-Object System.Text.UTF8Encoding $false))

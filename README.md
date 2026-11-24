@@ -19,6 +19,16 @@ backend or account.
 After changing code, click the reload icon on the extension card, then refresh
 your test pages so they get the new content script.
 
+## First run
+
+On install, the duck opens `welcome.html`: it lists everything the extension
+reads and keeps, and nothing is tracked until the user presses **I AGREE,
+WAKE THE DUCK**. Until then the duck counts as switched off whatever the
+switch says, and turning the switch on opens the welcome page instead. The
+Chrome Web Store requires this consent step for any extension that handles
+user data, even data that never leaves the device. Agreement is stored as
+`consentedAt` in `chrome.storage.local`.
+
 ## Switching the duck off
 
 The big switch at the top of the popup turns the whole extension on and off.
@@ -101,8 +111,22 @@ the tab. A spared tab is safe for 30 minutes. Chrome's
 
 The extension's ID is pinned by the `key` field in `manifest.json`
 (`foifgpacdfdginklojklodfnoljjhgkj`), because the helper registration only
-accepts that ID. Before publishing to the Chrome Web Store, remove `key` and
-add the store's extension ID to `allowed_origins` in `helper/install.ps1`.
+accepts the IDs listed in `helper/install.ps1`.
+
+## Publishing to the Chrome Web Store
+
+The store refuses a manifest with a `key` field, so don't zip the folder by
+hand. Double-click `pack.cmd`: it writes `dist\killing-duck-<version>.zip`
+with `key` removed from the manifest and only the extension's own files
+inside (no helper, README or scripts). Upload that zip.
+
+The store copy's ID is `bcebhbmffhngbmdigmkfgeiecpmbaale`, listed in
+`$extensionIds` in `helper/install.ps1` next to the unpacked copy's ID, so
+the helper accepts both.
+
+The store also needs a privacy policy URL. The policy text is in
+[`PRIVACY.md`](PRIVACY.md); keep it in step with `welcome.html` when what the
+extension reads or keeps changes.
 
 ## Levels, XP and streaks
 
@@ -204,4 +228,4 @@ and 2 minutes on the report page.
 | `nativeMessaging` | Talk to the optional tab strip helper on Windows |
 
 The content script runs on all `http` and `https` pages to show the overlay.
-Mention this in the Chrome Web Store privacy disclosure.
+`welcome.html` and `PRIVACY.md` both say so.
