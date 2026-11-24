@@ -18,6 +18,27 @@ const huntMode = document.getElementById("hunt-mode");
 const sound = document.getElementById("sound");
 const huntNow = document.getElementById("hunt-now");
 
+const rotTime = document.getElementById("rot-time");
+const rank = document.getElementById("rank");
+const xpBar = document.getElementById("xp-bar");
+const xpFill = document.getElementById("xp-fill");
+const xpText = document.getElementById("xp-text");
+const streak = document.getElementById("streak");
+const bestStreak = document.getElementById("best-streak");
+const budget = document.getElementById("budget");
+
+const focusToday = document.getElementById("focus-today");
+const focusIdle = document.getElementById("focus-idle");
+const focusHelp = document.getElementById("focus-help");
+const focusStart = document.getElementById("focus-start");
+const focusRunning = document.getElementById("focus-running");
+const focusLeft = document.getElementById("focus-left");
+const focusStop = document.getElementById("focus-stop");
+const openReport = document.getElementById("open-report");
+
+// End time of the running focus session, for the countdown
+let focusUntil = 0;
+
 const HELPER_STATUS = {
   connected: "Living on your tab strip. Drag it onto a tab, or press KILL below, " +
     "and it pecks that tab's close button.",
@@ -91,10 +112,59 @@ function updateUI(state) {
   killsToday.textContent = state.killsToday;
   killsTotal.textContent = state.killsTotal;
 
+  rotTime.textContent = formatTime(state.rotMinutes);
+  updateProgress(state);
+  updateFocus(state);
+
   huntMode.checked = state.prefs.huntMode;
   sound.checked = state.prefs.sound;
   huntMode.disabled = !onStrip;
   huntNow.disabled = !onStrip;
+}
+
+function updateProgress(state) {
+  const into = state.xp - state.levelXp;
+  const span = state.nextLevelXp - state.levelXp;
+
+  rank.textContent = state.rank;
+  xpFill.style.width = `${Math.min(100, (into / span) * 100)}%`;
+  xpBar.setAttribute("aria-valuemax", String(span));
+  xpBar.setAttribute("aria-valuenow", String(into));
+  xpText.textContent = `${into} / ${span} XP to LV ${state.level + 1}`;
+
+  streak.textContent = state.streak;
+  bestStreak.textContent = `best ${state.bestStreak}`;
+
+  const limit = state.settings.rotBudgetMinutes;
+  const used = state.rotMinutes;
+
+  budget.classList.toggle("over", used > limit);
+  budget.textContent = used > limit
+    ? `Brain rot today: ${used} of ${limit} min. Over budget: the streak restarts tomorrow.`
+    : `Brain rot today: ${used} of ${limit} min. Stay under to grow the streak.`;
+}
+
+function updateFocus(state) {
+  const minutes = state.settings.focusMinutes;
+
+  focusToday.textContent = `${state.focusToday} today`;
+  focusUntil = state.focus ? state.focus.until : 0;
+  focusIdle.hidden = Boolean(state.focus);
+  focusRunning.hidden = !state.focus;
+
+  focusStart.textContent = `START A ${minutes}-MINUTE FOCUS`;
+  focusHelp.textContent = state.helper === "connected" && !state.napping
+    ? `Brain rot sites are blocked, and the duck kills them on sight. Finish for +${minutes} XP.`
+    : `Brain rot sites are blocked until the timer runs out. Finish for +${minutes} XP.`;
+
+  tickFocus();
+}
+
+function tickFocus() {
+  if (!focusUntil) return;
+
+  const seconds = Math.max(0, Math.ceil((focusUntil - Date.now()) / 1000));
+  focusLeft.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 function showError() {
@@ -206,6 +276,25 @@ huntNow.addEventListener("click", async () => {
   }, 1500);
 });
 
+focusStart.addEventListener("click", async () => {
+  focusStart.disabled = true;
+  await chrome.runtime.sendMessage({ type: "START_FOCUS" });
+  focusStart.disabled = false;
+  await refreshDashboard();
+});
+
+focusStop.addEventListener("click", async () => {
+  focusStop.disabled = true;
+  await chrome.runtime.sendMessage({ type: "STOP_FOCUS" });
+  focusStop.disabled = false;
+  await refreshDashboard();
+});
+
+openReport.addEventListener("click", () => {
+  chrome.runtime.openOptionsPage();
+  window.close();
+});
+
 wakeHelper.addEventListener("click", async () => {
   wakeHelper.disabled = true;
   await chrome.runtime.sendMessage({ type: "WAKE_HELPER" });
@@ -215,11 +304,23 @@ wakeHelper.addEventListener("click", async () => {
 
 let refreshTimer = null;
 
-// Tabs closed by the duck (or anything else) disappear from the list.
-chrome.tabs.onRemoved.addListener(() => {
+function scheduleRefresh() {
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(refreshDashboard, 150);
+}
+
+// Tabs closed by the duck (or anything else) disappear from the list, and
+// the XP they earned shows up.
+chrome.tabs.onRemoved.addListener(scheduleRefresh);
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && ("xp" in changes || "focus" in changes || "history" in changes)) {
+    scheduleRefresh();
+  }
 });
+
+// The focus countdown; when it reaches zero the session's XP arrives
+// through the storage listener above.
+setInterval(tickFocus, 1000);
 
 // Initial load
 refreshDashboard();

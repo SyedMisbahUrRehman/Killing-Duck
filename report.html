@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Killing Duck report</title>
+  <link rel="stylesheet" href="report.css">
+</head>
+
+<body>
+
+  <main class="page">
+
+    <header class="top">
+      <img src="assets/duck.svg" class="duck" alt="">
+      <div>
+        <h1>KILLING DUCK</h1>
+        <p class="subtitle">Kills <s>You</s>, Kills Brain Rot</p>
+      </div>
+    </header>
+
+    <section class="tiles" aria-label="Your duck at a glance">
+
+      <div class="tile">
+        <small>Level</small>
+        <strong id="tile-level">1</strong>
+        <span id="tile-rank">DUCKLING · 0 XP</span>
+      </div>
+
+      <div class="tile">
+        <small>Streak</small>
+        <strong id="tile-streak">0 days</strong>
+        <span id="tile-best">best 0</span>
+      </div>
+
+      <div class="tile">
+        <small>Brain rot, 7 days</small>
+        <strong id="tile-rot">0m</strong>
+        <span id="tile-rot-delta">same as the 7 days before</span>
+      </div>
+
+      <div class="tile">
+        <small>Tabs killed, 7 days</small>
+        <strong id="tile-kills">0</strong>
+        <span id="tile-kills-total">0 all time</span>
+      </div>
+
+    </section>
+
+    <section class="card" aria-labelledby="chart-title">
+
+      <div class="card-header">
+        <h2 id="chart-title">ACTIVE BROWSING, LAST 7 DAYS</h2>
+        <ul class="legend">
+          <li><i class="swatch rot"></i>Brain rot</li>
+          <li><i class="swatch other"></i>Everything else</li>
+        </ul>
+      </div>
+
+      <div class="chart" id="chart">
+        <div class="plot" id="plot">
+          <div class="grid" id="grid"></div>
+          <div class="cols" id="cols"></div>
+        </div>
+        <div class="tooltip" id="tooltip" role="status" hidden></div>
+      </div>
+
+      <p class="note" id="budget-note">✓ marks a day within your brain rot budget.</p>
+
+      <table class="days">
+        <caption class="sr-only">The last 7 days</caption>
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            <th scope="col">Browsing</th>
+            <th scope="col">Brain rot</th>
+            <th scope="col">Tabs killed</th>
+            <th scope="col">Focus</th>
+            <th scope="col">Budget</th>
+          </tr>
+        </thead>
+        <tbody id="day-rows"></tbody>
+      </table>
+
+    </section>
+
+    <section class="card" aria-labelledby="settings-title">
+
+      <div class="card-header">
+        <h2 id="settings-title">SETTINGS</h2>
+      </div>
+
+      <form id="settings" novalidate>
+
+        <fieldset>
+          <legend>Open tabs</legend>
+          <label>Worried at <input type="number" name="warningTabs" min="2" max="98"> tabs</label>
+          <label>Stressed at <input type="number" name="stressedTabs" min="3" max="99"> tabs</label>
+          <label>Exhausted at <input type="number" name="criticalTabs" min="4" max="100"> tabs</label>
+          <p class="hint">Hunt mode starts hunting at the "worried" count.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Browsing time per day</legend>
+          <label>Worried after <input type="number" name="warningMinutes" min="1" max="599"> minutes</label>
+          <label>Exhausted after <input type="number" name="criticalMinutes" min="2" max="600"> minutes</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Streak and focus</legend>
+          <label>Daily brain rot budget <input type="number" name="rotBudgetMinutes" min="0" max="600"> minutes</label>
+          <label>Focus session <input type="number" name="focusMinutes" min="5" max="180"> minutes</label>
+          <p class="hint">A day with no more brain rot than the budget adds one to your streak.</p>
+        </fieldset>
+
+        <fieldset class="wide">
+          <legend>Brain rot sites</legend>
+          <label class="block" for="brain-rot">One per line. Add a path to count only part of a site,
+            such as <code>youtube.com/shorts</code>.</label>
+          <textarea id="brain-rot" name="brainRot" rows="9" spellcheck="false"></textarea>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" class="primary">SAVE</button>
+          <button type="button" id="reset">RESET TO DEFAULTS</button>
+          <p class="saved" id="saved" role="status"></p>
+        </div>
+
+      </form>
+
+    </section>
+
+    <footer>
+      <p>Everything here stays on this computer. Made with QUACK and good intentions.</p>
+    </footer>
+
+  </main>
+
+  <script src="report.js"></script>
+
+</body>
+
+</html>

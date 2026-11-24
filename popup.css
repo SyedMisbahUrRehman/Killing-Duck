@@ -2,6 +2,11 @@
   box-sizing: border-box;
 }
 
+/* Buttons below set display: block, which would otherwise beat hidden */
+[hidden] {
+  display: none !important;
+}
+
 body {
   width: 340px;
   margin: 0;
@@ -67,7 +72,7 @@ h1 {
 
 .stats {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   margin: 18px 0;
 }
 
@@ -92,12 +97,114 @@ h1 {
 
 .stat strong {
   margin: 5px 0;
-  font-size: 22px;
+  font-size: 19px;
+  white-space: nowrap;
 }
 
 .stat small {
   font-size: 9px;
   font-weight: bold;
+}
+
+.progress-card,
+.focus-card {
+  margin-top: 14px;
+  padding: 2px 12px 12px;
+  background: #fff8e7;
+  border: 3px solid #352d24;
+  box-shadow: 4px 4px 0 #352d24;
+}
+
+.focus-card {
+  margin: 0 0 14px;
+}
+
+.xp-track {
+  height: 12px;
+  background: #f1e5c4;
+  border: 2px solid #352d24;
+}
+
+.xp-fill {
+  width: 0;
+  height: 100%;
+  background: #f5cf45;
+  transition: width 0.4s steps(6);
+}
+
+.xp-text {
+  font-size: 10px;
+  margin: 4px 0 8px;
+  color: #77674f;
+}
+
+.streak {
+  font-size: 12px;
+  margin: 0 0 4px;
+}
+
+.streak strong {
+  font-size: 15px;
+}
+
+.streak small {
+  margin-left: 4px;
+  font-size: 10px;
+  color: #77674f;
+}
+
+.budget {
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 0;
+  color: #77674f;
+}
+
+.budget.over {
+  color: #b91c1c;
+  font-weight: bold;
+}
+
+#focus-today {
+  font-size: 10px;
+  color: #8a7961;
+}
+
+.focus-help {
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 0 0 6px;
+  color: #77674f;
+}
+
+.focus-left {
+  font-size: 12px;
+  text-align: center;
+  margin: 0 0 6px;
+}
+
+.focus-left strong {
+  display: block;
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-link {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 8px;
+  border: 3px solid #352d24;
+  background: #352d24;
+  color: #f5cf45;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.report-link:hover {
+  background: #4a3f33;
 }
 
 .strip-card {
@@ -178,7 +285,8 @@ h1 {
   background: #e9b932;
 }
 
-.sic:disabled {
+.sic:disabled,
+.wake:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -266,5 +374,9 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .duck {
     animation: none;
+  }
+
+  .xp-fill {
+    transition: none;
   }
 }

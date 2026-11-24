@@ -47,8 +47,7 @@ extension works as before, and tabs close straight away.
 | Turn on **Hunt mode** in the popup | goes after a tab on its own when you are over the tab limit (below) |
 | Right-click it | menu: mute, nap for 30 minutes, send it away until Chrome restarts |
 
-Every tab the duck kills counts toward its level: a red headband at 10 kills,
-sunglasses at 30.
+Every kill earns XP toward the duck's level (see below).
 
 ### Hunt mode
 
@@ -56,8 +55,9 @@ Off by default. When it is on and you have `warningTabs` (6) or more tabs, the
 duck picks one tab in your focused window, at most one every 45 seconds:
 
 - never the active tab, a pinned tab, or a tab playing sound;
-- brain rot sites first (YouTube Shorts, TikTok, Instagram, Reddit, X,
-  Facebook, 9GAG, Twitch) once you have not looked at them for 30 seconds;
+- sites on your brain rot list first (by default YouTube Shorts, TikTok,
+  Instagram, Reddit, X, Facebook, 9GAG and Twitch) once you have not looked
+  at them for 30 seconds;
 - otherwise the tab you have ignored longest, once unseen for 5 minutes.
 
 It shows a "!" and gives two warning pecks first, so you can click it to spare
@@ -87,6 +87,58 @@ The extension's ID is pinned by the `key` field in `manifest.json`
 accepts that ID. Before publishing to the Chrome Web Store, remove `key` and
 add the store's extension ID to `allowed_origins` in `helper/install.ps1`.
 
+## Levels, XP and streaks
+
+| You | XP |
+| --- | -- |
+| Kill a tab (any way: popup, overlay, drag, hunt) | 10 |
+| Kill a tab on your brain rot list | 20 |
+| Finish a focus session | 1 per minute (25 for the default session) |
+| Finish a day you browsed on within your brain rot budget | 25 |
+
+Level *n* starts at 50 × *n* × (*n* − 1) XP: level 2 at 100, level 3 at 300,
+level 4 at 600, level 5 at 1,000. The duck's rank goes DUCKLING, BANDIT,
+HITMAN, ASSASSIN, WARLORD, LEGEND. On the tab strip it wears a red headband
+from level 2 and sunglasses from level 3, and says LEVEL UP! when it gains one.
+
+Minutes on brain rot sites are counted the same way as active time (below).
+A day with no more brain rot than your daily budget (15 minutes by default)
+adds one to your streak; a day over it resets the streak to zero. Days
+Chrome was not open count as clean but earn no XP. The streak is settled
+once a day has ended, so today never breaks it until midnight.
+
+Updating from 1.1 keeps your kills: each one becomes 10 XP, so the headband
+and sunglasses stay where they were.
+
+## Focus mode
+
+Press **START A 25-MINUTE FOCUS** in the popup. Until the timer runs out:
+
+- every page on your brain rot list is covered by a full-page block with the
+  time left, and its videos are paused;
+- with the duck on the tab strip, it runs over and pecks a brain rot tab as
+  soon as you look at it (click the duck to spare the tab, as with any peck);
+- the toolbar badge shows the minutes left instead of the tab count.
+
+Let the timer run out to earn the XP. **END EARLY** in the popup, or on the
+block, stops the session without XP. A session still pays out if Chrome was
+closed when it ended.
+
+## Report and settings
+
+**WEEKLY REPORT & SETTINGS** at the bottom of the popup (or **Extension
+options** on `chrome://extensions`) opens a page with:
+
+- your level, streak, brain rot over the last 7 days compared with the 7
+  before, and tabs killed;
+- a chart of active browsing for each of the last 7 days, split into brain
+  rot and everything else, with a day-by-day table underneath;
+- every setting: the tab and time thresholds below, the daily brain rot
+  budget, the focus length, and the brain rot site list (one per line; add a
+  path such as `youtube.com/shorts` to count only part of a site).
+
+History is kept for 60 days, on this computer only.
+
 ## Default thresholds
 
 | Condition                     | Duck mood | Overlay message          |
@@ -98,9 +150,9 @@ add the store's extension ID to `allowed_origins` in `helper/install.ps1`.
 | 25 minutes of active browsing | worried   | time warning             |
 | 45 minutes of active browsing | exhausted | strong break reminder    |
 
-Thresholds live in `SETTINGS` at the top of `background.js`. The overlay and
-the tab strip duck read them from the background worker, so that is the only
-place to change them.
+Change them on the report page. The defaults live in `DEFAULT_SETTINGS` at
+the top of `background.js`; the overlay, popup and tab strip duck all read the
+current values from the background worker.
 
 ## How time is counted
 
@@ -112,14 +164,15 @@ all of these are true:
 - the active tab is an `http` or `https` page.
 
 The total resets at local midnight. It is an approximate measure, not a
-stopwatch. To test the time warnings quickly, temporarily set
-`warningMinutes` and `criticalMinutes` to 1 and 2.
+stopwatch. To test the time warnings quickly, set the time thresholds to 1
+and 2 minutes on the report page.
 
 ## Overlay behaviour
 
 - The overlay appears on regular web pages when the mood is not happy.
 - **CLOSE THIS TAB** closes the page it is on (through the duck, when it is on
-  the tab strip). Outside hunt mode the duck never closes tabs on its own.
+  the tab strip). Outside hunt mode and focus mode the duck never closes tabs
+  on its own.
 - **I'LL BE BACK** hides the duck on that page until the mood gets worse, or
   until it recovers to happy and then worsens again.
 
@@ -128,7 +181,7 @@ stopwatch. To test the time warnings quickly, temporarily set
 | Permission        | Why |
 | ----------------- | --- |
 | `tabs`            | Count open tabs, list their titles in the popup, close tabs on request |
-| `storage`         | Save today's active minutes, kill counts and settings locally |
+| `storage`         | Save daily history, XP, streaks, focus sessions and settings locally |
 | `alarms`          | Wake the service worker once a minute to count time |
 | `idle`            | Skip minutes when the user is away from the computer |
 | `nativeMessaging` | Talk to the optional tab strip helper on Windows |

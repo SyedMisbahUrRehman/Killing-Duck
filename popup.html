@@ -26,6 +26,28 @@
       <p id="duck-message">Your browsing looks healthy.</p>
     </section>
 
+    <section class="progress-card" aria-labelledby="rank">
+
+      <div class="section-header">
+        <h3 id="rank">DUCKLING</h3>
+        <span id="level-label">LV 1</span>
+      </div>
+
+      <div class="xp-track" role="progressbar" id="xp-bar"
+           aria-label="Experience to the next level" aria-valuemin="0">
+        <div class="xp-fill" id="xp-fill"></div>
+      </div>
+      <p class="xp-text" id="xp-text">0 / 100 XP</p>
+
+      <p class="streak">
+        <span aria-hidden="true">🔥</span>
+        <strong id="streak">0</strong>-day streak
+        <small id="best-streak">best 0</small>
+      </p>
+      <p class="budget" id="budget">Brain rot today: 0 of 15 min. Keep it under to grow the streak.</p>
+
+    </section>
+
     <section class="stats">
 
       <div class="stat">
@@ -40,20 +62,45 @@
         <small>ACTIVE TIME</small>
       </div>
 
+      <div class="stat">
+        <span class="stat-icon" aria-hidden="true">🧠</span>
+        <strong id="rot-time">0m</strong>
+        <small>BRAIN ROT</small>
+      </div>
+
+    </section>
+
+    <section class="focus-card" aria-labelledby="focus-title">
+
+      <div class="section-header">
+        <h3 id="focus-title">FOCUS MODE</h3>
+        <span id="focus-today">0 today</span>
+      </div>
+
+      <div id="focus-idle">
+        <p class="focus-help" id="focus-help">Brain rot sites are blocked, and the duck
+          kills them on sight. Finish to earn XP.</p>
+        <button id="focus-start" class="sic">START A 25-MINUTE FOCUS</button>
+      </div>
+
+      <div id="focus-running" hidden>
+        <p class="focus-left"><strong id="focus-left">25:00</strong> left</p>
+        <button id="focus-stop" class="wake">END EARLY (NO XP)</button>
+      </div>
+
     </section>
 
     <section class="strip-card" aria-labelledby="strip-title">
 
       <div class="section-header">
         <h3 id="strip-title">TAB STRIP DUCK</h3>
-        <span id="level-label">LV 1</span>
       </div>
 
       <p id="helper-status" class="helper-status">Looking for the duck...</p>
       <button id="wake-helper" class="wake" hidden>BRING THE DUCK BACK</button>
 
       <p class="kills">
-        Brain rot killed: <strong id="kills-today">0</strong> today,
+        Tabs killed: <strong id="kills-today">0</strong> today,
         <strong id="kills-total">0</strong> total
       </p>
 
@@ -85,6 +132,8 @@
       <div id="tab-list"></div>
 
     </section>
+
+    <button id="open-report" class="report-link">WEEKLY REPORT &amp; SETTINGS</button>
 
     <footer>
       <p>Made with QUACK and good intentions.</p>
