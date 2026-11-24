@@ -19,6 +19,23 @@ backend or account.
 After changing code, click the reload icon on the extension card, then refresh
 your test pages so they get the new content script.
 
+## Switching the duck off
+
+The big switch at the top of the popup turns the whole extension on and off.
+While it is off:
+
+- the popup and the report page show only the switch (the report page shows
+  a **TURN THE DUCK ON** button instead);
+- nothing is tracked: no active minutes, no brain rot minutes;
+- no overlay or focus block appears on any page, and the toolbar badge is
+  empty;
+- the duck leaves the tab strip (the helper quits), so it never hunts;
+- a running focus session ends without XP;
+- your streak is frozen. The day you switched off still counts, but days the
+  duck was off the whole time neither extend nor break the streak.
+
+Switching it back on brings everything back where it was.
+
 ## Put the duck on the tab strip (Windows)
 
 Chrome does not let extensions draw on the tab strip, so `helper/` holds a

@@ -64,6 +64,37 @@ h1 {
   text-decoration-thickness: 2px;
 }
 
+/* Shown instead of everything else while the duck is switched off */
+
+.off-card {
+  text-align: center;
+  padding: 10px 24px 24px;
+}
+
+.off-card p {
+  max-width: 460px;
+  margin: 0 auto 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.off-card button {
+  padding: 10px 20px;
+  border: 3px solid var(--ink);
+  background: #f28b27;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.off-card button:hover {
+  background: #e98b28;
+}
+
 /* Stat tiles */
 
 .tiles {

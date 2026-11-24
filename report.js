@@ -224,9 +224,22 @@ function renderTable(week, report) {
   });
 }
 
+let formFilled = false;
+
 async function renderReport() {
   const report = await chrome.runtime.sendMessage({ type: "GET_REPORT" });
   if (!report) return;
+
+  // Switched off: nothing but a way to switch it back on
+  $("off-card").hidden = report.enabled;
+  $("on-content").hidden = !report.enabled;
+  if (!report.enabled) return report;
+
+  // Filled once, so a later refresh never overwrites an edit in progress
+  if (!formFilled) {
+    fillForm(report.settings);
+    formFilled = true;
+  }
 
   const week = report.days.slice(-7);
   const lastWeek = report.days.slice(0, 7);
@@ -286,17 +299,22 @@ $("reset").addEventListener("click", async () => {
   }
 });
 
-// Kills, minutes and focus sessions show up while the page is open. The
-// form is left alone so an edit in progress is not overwritten.
+$("turn-on").addEventListener("click", async () => {
+  $("turn-on").disabled = true;
+  await chrome.runtime.sendMessage({ type: "SET_ENABLED", value: true });
+  $("turn-on").disabled = false;
+  await renderReport();
+});
+
+// Kills, minutes, focus sessions and the switch show up while the page is
+// open.
 let refreshTimer = null;
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
-  if (!("history" in changes || "xp" in changes || "streak" in changes || "settings" in changes)) return;
+  if (!["history", "xp", "streak", "settings", "enabled"].some(key => key in changes)) return;
 
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(renderReport, 300);
 });
 
-renderReport().then(report => {
-  if (report) fillForm(report.settings);
-});
+renderReport();

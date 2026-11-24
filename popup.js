@@ -36,6 +36,11 @@ const focusLeft = document.getElementById("focus-left");
 const focusStop = document.getElementById("focus-stop");
 const openReport = document.getElementById("open-report");
 
+const power = document.getElementById("power");
+const powerTitle = document.getElementById("power-title");
+const powerLine = document.getElementById("power-line");
+const onContent = document.getElementById("on-content");
+
 // End time of the running focus session, for the countdown
 let focusUntil = 0;
 
@@ -86,8 +91,28 @@ function pluralTabs(count) {
   return `${count} ${count === 1 ? "tab" : "tabs"}`;
 }
 
+// The master switch. Off, the popup shows nothing but the switch.
+function updatePower(enabled) {
+  power.setAttribute("aria-checked", String(enabled));
+  powerTitle.textContent = enabled ? "DUCK ON DUTY" : "DUCK OFF DUTY";
+
+  if (enabled) {
+    const word = document.createElement("em");
+    word.textContent = "guarded";
+    powerLine.replaceChildren("Your browsing is ", word, ".");
+  } else {
+    powerLine.textContent = "Nothing is tracked, blocked or closed.";
+  }
+
+  onContent.hidden = !enabled;
+  document.body.classList.remove("loading");
+}
+
 // Update the duck according to browsing behaviour
 function updateUI(state) {
+  updatePower(state.enabled);
+  if (!state.enabled) return;
+
   tabCount.textContent = state.tabCount;
   activeTime.textContent = formatTime(state.activeMinutes);
 
@@ -168,6 +193,8 @@ function tickFocus() {
 }
 
 function showError() {
+  document.body.classList.remove("loading");
+  onContent.hidden = false;
   duckTitle.textContent = "QUACK?";
   duckMessage.textContent =
     "The duck could not reach the extension. Try reopening this popup.";
@@ -244,7 +271,7 @@ async function refreshDashboard() {
     }
 
     updateUI(state);
-    await loadTabs();
+    if (state.enabled) await loadTabs();
   } catch (error) {
     console.warn("Duck popup failed to load:", error);
     showError();
@@ -274,6 +301,17 @@ huntNow.addEventListener("click", async () => {
   setTimeout(() => {
     huntNow.disabled = false;
   }, 1500);
+});
+
+power.addEventListener("click", async () => {
+  const turnOn = power.getAttribute("aria-checked") !== "true";
+
+  // Flip at once; the worker takes a moment to settle the rest.
+  power.disabled = true;
+  updatePower(turnOn);
+  await chrome.runtime.sendMessage({ type: "SET_ENABLED", value: turnOn });
+  power.disabled = false;
+  await refreshDashboard();
 });
 
 focusStart.addEventListener("click", async () => {
@@ -313,7 +351,7 @@ function scheduleRefresh() {
 // the XP they earned shows up.
 chrome.tabs.onRemoved.addListener(scheduleRefresh);
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && ("xp" in changes || "focus" in changes || "history" in changes)) {
+  if (area === "local" && ("xp" in changes || "focus" in changes || "history" in changes || "enabled" in changes)) {
     scheduleRefresh();
   }
 });

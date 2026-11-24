@@ -273,6 +273,14 @@
   function updateDuck(state) {
     if (!state?.settings) return;
 
+    // The master switch is off: no overlay, no block.
+    if (state.enabled === false) {
+      if (focusUntil) unblock();
+      dismissedSeverity = 0;
+      hide();
+      return;
+    }
+
     if (state.focus && state.blocked) {
       block(state.focus.until);
       return;

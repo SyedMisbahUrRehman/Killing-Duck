@@ -76,6 +76,9 @@ const HUNT_BRAIN_ROT_IDLE_MS = 30 * 1000;    // brain rot tabs: unseen for 30 se
 const SPARED_FOR_MS = 30 * 60 * 1000;
 
 const DEFAULT_PREFS = {
+  // The master switch. Off: no tracking, no overlays, no duck on the tab
+  // strip, and the streak is frozen until it is back on.
+  enabled: true,
   huntMode: false,
   sound: true
 };
@@ -270,10 +273,11 @@ function updateToday(change) {
   });
 }
 
-// Close the books on every finished day since the last check. A day with
-// at most the brain rot budget extends the streak; days Chrome was not open
-// at all count too, but only days you browsed earn XP.
-function settleStreak(settings) {
+// Close the books on every finished day before `until` (today by default)
+// since the last check. A day with at most the brain rot budget extends the
+// streak; days Chrome was not open at all count too, but only days you
+// browsed earn XP.
+function settleStreak(settings, until = getTodayKey()) {
   return mutate(async () => {
     const progress = await loadProgress();
     const today = getTodayKey();
@@ -283,7 +287,7 @@ function settleStreak(settings) {
     if (day < addDays(today, -400)) day = addDays(today, -400);
 
     let changed = false;
-    for (; day < today; day = addDays(day, 1)) {
+    for (; day < until && day < today; day = addDays(day, 1)) {
       const entry = progress.history[day];
 
       if (!entry || entry.rotMinutes <= settings.rotBudgetMinutes) {
@@ -341,6 +345,7 @@ async function getReport() {
   }
 
   return {
+    enabled: (await getPrefs()).enabled,
     days,
     today,
     settings,
@@ -379,7 +384,8 @@ async function startFocus() {
 }
 
 // completed: the timer ran out (XP), not ended early (no XP)
-async function finishFocus(completed) {
+// quiet: no speech bubble (the duck is leaving anyway)
+async function finishFocus(completed, quiet = false) {
   // Claim the session in one step, so the end-of-focus alarm and the
   // minute tick cannot both pay out for it.
   const focus = await mutate(async () => {
@@ -399,11 +405,61 @@ async function finishFocus(completed) {
       progress.xp += xp;
     });
     helperSay(`FOCUS DONE! +${xp} XP`);
-  } else {
+  } else if (!quiet) {
     helperSay("GAVE UP?");
   }
 
   scheduleBroadcast();
+}
+
+// ---------------------------------------------------------------------------
+// The master switch
+// ---------------------------------------------------------------------------
+
+async function isEnabled() {
+  return (await getPrefs()).enabled;
+}
+
+async function setEnabled(on) {
+  const settings = await getSettings();
+  const today = getTodayKey();
+
+  if (!on) {
+    // Stop counting first, so a minute tick that is already running does
+    // not add to today after the switch.
+    await chrome.storage.local.set({ enabled: false, disabledSince: today });
+    await finishFocus(false, true);
+    await settleStreak(settings);
+    disconnectHelper();
+  } else {
+    const { disabledSince } = await chrome.storage.local.get("disabledSince");
+    await chrome.storage.local.set({ enabled: true });
+
+    // Days the duck was fully off neither extend nor break the streak. The
+    // day it was switched off had it on for part of the day, so that one
+    // still counts.
+    if (disabledSince) {
+      const dayAfter = addDays(disabledSince, 1);
+      await settleStreak(settings, dayAfter < today ? dayAfter : today);
+      await mutate(async () => {
+        const progress = await loadProgress();
+        const yesterday = addDays(today, -1);
+        if (progress.streak.through < yesterday) {
+          progress.streak.through = yesterday;
+          await saveProgress(progress);
+        }
+      });
+      await chrome.storage.local.remove("disabledSince");
+    }
+
+    helper.status = "connecting";
+    helper.retries = 0;
+    helper.napUntil = 0;
+    connectHelper();
+  }
+
+  await broadcastState();
+  return { success: true, enabled: on };
 }
 
 // A focus session whose end passed while Chrome or the worker was asleep
@@ -477,6 +533,7 @@ async function getDashboard() {
   const { today } = progress;
 
   return {
+    enabled: prefs.enabled,
     tabCount,
     activeMinutes: today.minutes,
     rotMinutes: today.rotMinutes,
@@ -499,12 +556,30 @@ async function getDashboard() {
   };
 }
 
+let lastBroadcastEnabled;
+
 // Send the current state to every open webpage and refresh the badge
 async function broadcastState() {
   const state = await getDashboard();
   const { settings, focus } = state;
 
   const tabs = await chrome.tabs.query({});
+
+  // Switched off: take every overlay down once and clear the badge. Pages
+  // opened later ask for themselves and learn the duck is off.
+  if (!state.enabled) {
+    if (lastBroadcastEnabled !== false) {
+      await Promise.all(
+        tabs
+          .filter(tab => tab.id !== undefined && isWebUrl(tab.url))
+          .map(tab => chrome.tabs.sendMessage(tab.id, { type: "DUCK_UPDATE", state }).catch(() => {}))
+      );
+      await chrome.action.setBadgeText({ text: "" });
+    }
+    lastBroadcastEnabled = false;
+    return;
+  }
+  lastBroadcastEnabled = true;
 
   await Promise.all(
     tabs
@@ -584,6 +659,8 @@ async function getBrowsedTab() {
 
 // Accumulate active browsing time, one minute per alarm tick
 async function trackBrowsingTime() {
+  if (!(await isEnabled())) return;
+
   const settings = await getSettings();
 
   await finishExpiredFocus();
@@ -787,7 +864,7 @@ async function maybeHunt(immediate) {
 
 const helper = {
   port: null,
-  // connecting | connected | missing | stopped | disconnected
+  // connecting | connected | missing | stopped | disconnected | off
   status: "connecting",
   retries: 0,
   queue: [],
@@ -799,8 +876,30 @@ const helper = {
   napUntil: 0
 };
 
+// Hand anything the duck had not finished back as a plain close; the
+// duck's own hunts and focus kills are dropped.
+function releaseJobs() {
+  const pending = [helper.current, ...helper.queue].filter(Boolean);
+  if (helper.current) clearTimeout(helper.current.timer);
+  helper.current = null;
+  helper.queue = [];
+  pending
+    .filter(job => !isAutomatic(job.reason))
+    .forEach(job => closeTabNow(job.tabId));
+}
+
+// The master switch is off. Closing the port makes Chrome close the
+// helper's input, and the helper quits.
+function disconnectHelper() {
+  helper.status = "off";
+  const port = helper.port;
+  helper.port = null;
+  releaseJobs();
+  port?.disconnect();
+}
+
 function connectHelper() {
-  if (helper.port) return;
+  if (helper.port || helper.status === "off") return;
 
   helper.status = "connecting";
 
@@ -817,18 +916,12 @@ function connectHelper() {
 
   port.onDisconnect.addListener(() => {
     const error = chrome.runtime.lastError?.message || "";
+    if (helper.port !== port) return;
     helper.port = null;
 
-    // Hand anything the duck had not finished back as a plain close.
-    const pending = [helper.current, ...helper.queue].filter(Boolean);
-    if (helper.current) clearTimeout(helper.current.timer);
-    helper.current = null;
-    helper.queue = [];
-    pending
-      .filter(job => !isAutomatic(job.reason))
-      .forEach(job => closeTabNow(job.tabId));
+    releaseJobs();
 
-    if (helper.status === "stopped") return;
+    if (helper.status === "stopped" || helper.status === "off") return;
 
     if (/not found|forbidden/i.test(error)) {
       helper.status = "missing";
@@ -978,12 +1071,16 @@ initializeAlarm().catch(error => {
   console.warn("Could not create the duck alarm:", error);
 });
 
-connectHelper();
+getPrefs()
+  .then(async prefs => {
+    if (!prefs.enabled) {
+      helper.status = "off";
+      return;
+    }
 
-getSettings()
-  .then(async settings => {
+    connectHelper();
     await finishExpiredFocus();
-    await settleStreak(settings);
+    await settleStreak(await getSettings());
   })
   .catch(error => console.warn("Duck start-up check failed:", error));
 
@@ -1066,9 +1163,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "START_FOCUS") {
-    getFocus()
+    isEnabled()
+      .then(on => {
+        if (!on) throw new Error("The duck is off");
+        return getFocus();
+      })
       .then(focus => focus || startFocus())
-      .then(focus => sendResponse({ success: true, focus }));
+      .then(focus => sendResponse({ success: true, focus }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
 
@@ -1102,6 +1204,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "SET_ENABLED" ||
+      (message.type === "SET_PREF" && message.key === "enabled")) {
+    setEnabled(Boolean(message.value)).then(sendResponse);
+    return true;
+  }
+
   if (message.type === "SET_PREF" && message.key in DEFAULT_PREFS) {
     chrome.storage.local.set({ [message.key]: Boolean(message.value) })
       .then(() => sendResponse({ success: true }));
@@ -1114,6 +1222,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "WAKE_HELPER") {
+    if (helper.status === "off") {
+      sendResponse({ helper: helper.status });
+      return false;
+    }
     helper.retries = 0;
     helper.napUntil = 0;
     if (helper.status === "stopped") helper.status = "disconnected";
