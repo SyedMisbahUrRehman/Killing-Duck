@@ -247,3 +247,7 @@ and 2 minutes on the report page.
 
 The content script runs on all `http` and `https` pages to show the overlay.
 `welcome.html` and `PRIVACY.md` both say so.
+
+## License
+
+[MIT](LICENSE)
