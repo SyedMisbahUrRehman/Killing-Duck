@@ -146,6 +146,15 @@ The store also needs a privacy policy URL. The policy text is in
 [`PRIVACY.md`](PRIVACY.md); keep it in step with `welcome.html` when what the
 extension reads or keeps changes.
 
+### Store listing text
+
+Add this to the listing description so users know the tab strip duck is a
+separate, optional Windows app:
+
+> 🦆 **Want the duck on your actual tab strip?** On Windows, install the free
+> companion app: open Killing Duck and click **GET THE DUCK APP**. It's open
+> source and optional; everything else works without it.
+
 ## Levels, XP and streaks
 
 | You | XP |
