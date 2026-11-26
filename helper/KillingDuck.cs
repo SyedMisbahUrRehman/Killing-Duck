@@ -11,9 +11,12 @@
 // pecks that tab's close button, then tells the extension, which closes the
 // tab. The duck never closes anything by itself.
 //
-// Build:  helper\install.cmd  (uses the C# 5 compiler that ships with Windows,
-//         so this file sticks to C# 5: no string interpolation, no ?. etc.)
+// Users: double-click KillingDuck.exe. It installs itself for the current
+//        Windows user (see Setup below) and Chrome starts it from then on.
+// Build: helper\install.cmd  (uses the C# 5 compiler that ships with Windows,
+//        so this file sticks to C# 5: no string interpolation, no ?. etc.)
 
+using Microsoft.Win32;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -40,12 +43,21 @@ namespace KillingDuck
 
     static class Program
     {
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
 
         [STAThread]
-        static int Main()
+        static int Main(string[] args)
         {
             EnableDpiAwareness();
+
+            // Chrome passes the extension's origin; anyone else is a person
+            // who double-clicked the exe (or Settings > Apps uninstalling it).
+            if (!args.Any(a => a.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase)))
+            {
+                Application.EnableVisualStyles();
+                return Setup.Run(args.Contains("/uninstall", StringComparer.OrdinalIgnoreCase));
+            }
+
             Log.Open();
             Log.Write("start v" + Version);
 
@@ -74,6 +86,147 @@ namespace KillingDuck
             try { Win32.SetProcessDPIAware(); } catch { }
         }
 
+    }
+
+    // ------------------------------------------------------------------
+    // Install and uninstall, for the current Windows user only (no admin)
+    // ------------------------------------------------------------------
+
+    static class Setup
+    {
+        const string Title = "Killing Duck";
+        const string HostName = "com.killingduck.tabstrip";
+        const string HostKey = @"Software\Google\Chrome\NativeMessagingHosts\" + HostName;
+        const string AppsKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\KillingDuck";
+
+        // The Chrome Web Store copy, and the unpacked copy (its ID is fixed by
+        // "key" in manifest.json). Keep in step with helper\install.ps1.
+        static readonly string[] ExtensionIds =
+        {
+            "bcebhbmffhngbmdigmkfgeiecpmbaale",
+            "foifgpacdfdginklojklodfnoljjhgkj"
+        };
+
+        static string Dir
+        {
+            get
+            {
+                return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KillingDuck");
+            }
+        }
+
+        public static int Run(bool uninstall)
+        {
+            try
+            {
+                if (uninstall) Uninstall();
+                else Install();
+                return 0;
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("The duck could not be set up:\n\n" + e.Message, Title,
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return 1;
+            }
+        }
+
+        // Copies this exe to %LOCALAPPDATA%\KillingDuck, registers it with
+        // Chrome and adds it to Settings > Apps so it can be removed there.
+        static void Install()
+        {
+            string dir = Dir;
+            Directory.CreateDirectory(dir);
+            string exe = Path.Combine(dir, "KillingDuck.exe");
+
+            if (!string.Equals(Path.GetFullPath(Application.ExecutablePath), Path.GetFullPath(exe),
+                StringComparison.OrdinalIgnoreCase))
+            {
+                StopOthers();
+                File.Copy(Application.ExecutablePath, exe, true);
+            }
+
+            string manifest = Path.Combine(dir, HostName + ".json");
+            var host = new Dictionary<string, object>
+            {
+                { "name", HostName },
+                { "description", "Killing Duck tab strip companion" },
+                { "path", exe },
+                { "type", "stdio" },
+                { "allowed_origins", ExtensionIds.Select(id => "chrome-extension://" + id + "/").ToArray() }
+            };
+            // Chrome wants UTF-8 without a byte order mark.
+            File.WriteAllText(manifest, new JavaScriptSerializer().Serialize(host), new UTF8Encoding(false));
+
+            using (RegistryKey key = Registry.CurrentUser.CreateSubKey(HostKey))
+                key.SetValue("", manifest);
+
+            using (RegistryKey key = Registry.CurrentUser.CreateSubKey(AppsKey))
+            {
+                key.SetValue("DisplayName", "Killing Duck (tab strip duck)");
+                key.SetValue("DisplayVersion", Program.Version);
+                key.SetValue("Publisher", "Killing Duck");
+                key.SetValue("DisplayIcon", exe);
+                key.SetValue("InstallLocation", dir);
+                key.SetValue("UninstallString", "\"" + exe + "\" /uninstall");
+                key.SetValue("NoModify", 1, RegistryValueKind.DWord);
+                key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+            }
+
+            MessageBox.Show(
+                "The duck is installed.\n\n" +
+                "Go back to Chrome and click Killing Duck in the toolbar. " +
+                "The duck walks onto your tab strip.\n\n" +
+                "To remove it later: Windows Settings > Apps > Installed apps > Killing Duck.",
+                Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        static void Uninstall()
+        {
+            if (MessageBox.Show(
+                    "Remove the duck from your tab strip?\n\n" +
+                    "The Killing Duck extension keeps working in Chrome without it.",
+                    Title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+
+            Registry.CurrentUser.DeleteSubKeyTree(HostKey, false);
+            Registry.CurrentUser.DeleteSubKeyTree(AppsKey, false);
+            StopOthers();
+
+            MessageBox.Show("The duck is gone from your tab strip.", Title,
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            // This exe cannot delete itself while it runs, so cmd removes the
+            // folder a couple of seconds after it exits.
+            Process.Start(new ProcessStartInfo("cmd.exe",
+                "/c ping -n 3 127.0.0.1 >nul & rmdir /s /q \"" + Dir + "\"")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
+        }
+
+        // The copy Chrome is running holds the exe open. The extension
+        // reconnects on its own a few seconds after it stops.
+        static void StopOthers()
+        {
+            int self = Process.GetCurrentProcess().Id;
+            foreach (Process p in Process.GetProcessesByName("KillingDuck"))
+            {
+                using (p)
+                {
+                    if (p.Id == self) continue;
+                    try
+                    {
+                        p.Kill();
+                        p.WaitForExit(3000);
+                    }
+                    catch { }
+                }
+            }
+        }
     }
 
 

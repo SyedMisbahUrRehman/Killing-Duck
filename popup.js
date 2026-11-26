@@ -12,6 +12,10 @@ const duck = document.getElementById("duck");
 const levelLabel = document.getElementById("level-label");
 const helperStatus = document.getElementById("helper-status");
 const wakeHelper = document.getElementById("wake-helper");
+const stripOffer = document.getElementById("strip-offer");
+const stripUnsupported = document.getElementById("strip-unsupported");
+const stripLive = document.getElementById("strip-live");
+const stripControls = document.getElementById("strip-controls");
 const killsToday = document.getElementById("kills-today");
 const killsTotal = document.getElementById("kills-total");
 const huntMode = document.getElementById("hunt-mode");
@@ -48,9 +52,6 @@ const HELPER_STATUS = {
   connected: "Living on your tab strip. Drag it onto a tab, or press KILL below, " +
     "and it pecks that tab's close button.",
   connecting: "Waking the duck up...",
-  missing: "Not installed. Run <code>helper\\install.cmd</code> in the extension " +
-    "folder, then reload the extension, to put the duck on your tab strip. " +
-    "Until then, tabs close straight away.",
   disconnected: "The duck wandered off. Tabs close straight away for now.",
   stopped: "You sent the duck away. Tabs close straight away for now."
 };
@@ -108,8 +109,11 @@ function updatePower(enabled) {
   document.body.classList.remove("loading");
 }
 
+// The duck app is Windows only.
+const platformInfo = chrome.runtime.getPlatformInfo().catch(() => ({ os: "win" }));
+
 // Update the duck according to browsing behaviour
-function updateUI(state) {
+function updateUI(state, isWindows) {
   updatePower(state.enabled);
   if (!state.enabled) return;
 
@@ -127,11 +131,20 @@ function updateUI(state) {
 
   const onStrip = state.helper === "connected" && !state.napping;
 
-  helperStatus.innerHTML = state.napping
+  // Without the duck app there is no duck to bring back: offer the app
+  // instead of the duck's status and controls.
+  const installed = state.helper !== "missing";
+  stripOffer.hidden = installed || !isWindows;
+  stripUnsupported.hidden = installed || isWindows;
+  stripLive.hidden = !installed;
+  stripControls.hidden = !installed;
+
+  helperStatus.textContent = state.napping
     ? "Napping. Tabs close straight away until it wakes up."
     : (HELPER_STATUS[state.helper] || HELPER_STATUS.connecting);
   wakeHelper.hidden = !(state.napping ||
     state.helper === "stopped" || state.helper === "disconnected");
+  if (state.helper === "connecting") setTimeout(scheduleRefresh, 1000);
 
   levelLabel.textContent = `LV ${state.level}`;
   killsToday.textContent = state.killsToday;
@@ -261,16 +274,17 @@ async function loadTabs() {
 // Refresh everything
 async function refreshDashboard() {
   try {
-    const state = await chrome.runtime.sendMessage({
-      type: "GET_DASHBOARD"
-    });
+    const [state, platform] = await Promise.all([
+      chrome.runtime.sendMessage({ type: "GET_DASHBOARD" }),
+      platformInfo
+    ]);
 
     if (!state) {
       showError();
       return;
     }
 
-    updateUI(state);
+    updateUI(state, platform.os === "win");
     if (state.enabled) await loadTabs();
   } catch (error) {
     console.warn("Duck popup failed to load:", error);

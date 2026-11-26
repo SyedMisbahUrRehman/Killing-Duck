@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Killing Duck",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Kills brain rot. A killing duck that helps you reduce tab overload and mindless browsing.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3v5YWKF5p2Y/qiYDxpGJvjA8+5yau3Df3TdP2aXq/5Qpu6SVDzTK11+8qe5tNwUUy1xAbMt50rfoIiRKYCkIHwMCIf8EV0xBnxefmF3A0x69bAwBWLoQAmP0rpuzHZAKB5oEgiA1R05NTXTjkOJQ8YPv0hRAalO0sbGjbzfR/KdYqBeMxRcf8zBygLeTt53p/OfFQr9siNbAVL/T+aQNv2MPQu3M8CGb/nNlpLXHUU8R5AiJhL/5bYAgM6VqERX4ylqkKoy4Q7B1yb1V+dsgN+kIaqI3DcnPI+r3i84yqu5XNdfaPRzpUeet9Qim0OHa3n/maDlpvgfsS/macNxDfQIDAQAB",
   "permissions": [

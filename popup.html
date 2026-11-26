@@ -108,13 +108,33 @@
         <h3 id="strip-title">TAB STRIP DUCK</h3>
       </div>
 
-      <p id="helper-status" class="helper-status">Looking for the duck...</p>
-      <button id="wake-helper" class="wake" hidden>BRING THE DUCK BACK</button>
+      <!-- No duck app on this computer: offer it, and say plainly that it is optional. -->
+      <div id="strip-offer" hidden>
+        <p class="helper-status">Want the duck walking on your tab strip, pecking
+          tabs closed? Chrome doesn't let extensions draw there, so it needs a
+          small free Windows app.</p>
+        <a class="sic get-app" target="_blank" rel="noopener"
+           href="https://github.com/SyedMisbahUrRehman/Killing-Duck/releases/latest">GET THE DUCK APP (WINDOWS)</a>
+        <p class="offer-note">The app is open source, so you can check its code
+          on GitHub before you run it. Or skip it: everything else here works
+          without the duck.</p>
+      </div>
+
+      <p id="strip-unsupported" class="helper-status" hidden>The tab strip duck is
+        a Windows app, so it can't run on this computer. Everything else here
+        works without it.</p>
+
+      <div id="strip-live">
+        <p id="helper-status" class="helper-status">Looking for the duck...</p>
+        <button id="wake-helper" class="wake" hidden>BRING THE DUCK BACK</button>
+      </div>
 
       <p class="kills">
         Tabs killed: <strong id="kills-today">0</strong> today,
         <strong id="kills-total">0</strong> total
       </p>
+
+      <div id="strip-controls">
 
       <label class="toggle">
         <input type="checkbox" id="hunt-mode">
@@ -131,6 +151,8 @@
       </label>
 
       <button id="hunt-now" class="sic">SIC 'EM! KILL MY STALEST TAB</button>
+
+      </div>
 
     </section>
 

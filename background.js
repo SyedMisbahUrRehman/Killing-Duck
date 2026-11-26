@@ -966,6 +966,17 @@ function connectHelper() {
   });
 }
 
+// Resolves once a connection attempt has an outcome, or after `ms`.
+function helperSettled(ms) {
+  const started = Date.now();
+  return new Promise(resolve => {
+    (function check() {
+      if (helper.status !== "connecting" || Date.now() - started >= ms) resolve();
+      else setTimeout(check, 50);
+    })();
+  });
+}
+
 // Titles of the tabs in the last focused window. The helper uses them to
 // find that window and to stay out of other Chrome profiles' windows.
 async function getFocusedTitles() {
@@ -1166,7 +1177,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "GET_DASHBOARD") {
-    getDashboard().then(state => {
+    // The user may have just installed the duck app: look for it again
+    // when the popup opens, and wait for the answer so the popup doesn't
+    // flash "connecting". Chrome reports a missing app within milliseconds;
+    // an installed one says "ready" in well under a second.
+    const lookAgain = helper.status === "missing" && Boolean(sender.url?.endsWith("/popup.html"));
+    if (lookAgain) connectHelper();
+
+    (lookAgain ? helperSettled(1500) : Promise.resolve()).then(getDashboard).then(state => {
       // A page asking for itself also learns whether focus mode blocks it.
       const url = sender.tab?.url;
       sendResponse({

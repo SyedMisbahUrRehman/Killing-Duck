@@ -7,6 +7,8 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $hostName = 'com.killingduck.tabstrip'
 # Extension IDs the helper answers to. The first is the unpacked copy, fixed
 # by "key" in ../manifest.json. The second is the Chrome Web Store copy.
+# Keep in step with Setup.ExtensionIds in KillingDuck.cs, which registers
+# the exe the same way when a user double-clicks it.
 $extensionIds = @(
     'foifgpacdfdginklojklodfnoljjhgkj',
     'bcebhbmffhngbmdigmkfgeiecpmbaale'

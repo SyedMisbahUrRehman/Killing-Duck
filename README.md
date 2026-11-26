@@ -52,15 +52,32 @@ Chrome does not let extensions draw on the tab strip, so `helper/` holds a
 small Windows program that does it. Chrome starts and stops it through
 [native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging).
 
-1. Double-click `helper\install.cmd`. It compiles `KillingDuck.exe` from
-   `KillingDuck.cs` with the C# compiler that ships with Windows, and registers
-   it with Chrome for your Windows user (one registry key under
-   `HKCU\Software\Google\Chrome\NativeMessagingHosts`).
-2. Reload Killing Duck on `chrome://extensions`. The duck appears on the tab
-   strip of your focused Chrome window.
+**Users:** download `KillingDuck.exe` from the
+[latest release](https://github.com/SyedMisbahUrRehman/Killing-Duck/releases/latest)
+(the popup's **GET THE DUCK APP** button links there) and double-click it.
+It installs itself for your Windows user, no admin needed: it copies itself to
+`%LOCALAPPDATA%\KillingDuck`, registers with Chrome (one registry key under
+`HKCU\Software\Google\Chrome\NativeMessagingHosts`) and adds itself to
+**Settings > Apps**, which is also where you remove it. Then open the popup:
+it looks for the app again and the duck walks onto the tab strip.
 
-`helper\uninstall.cmd` removes the registration. Without the helper the
-extension works as before, and tabs close straight away.
+The exe is not code-signed, so Windows SmartScreen says "Windows protected your
+PC" the first time: **More info > Run anyway**. Its source is
+[`helper/KillingDuck.cs`](helper/KillingDuck.cs).
+
+**Developers:** double-click `helper\install.cmd`. It compiles
+`KillingDuck.exe` from `KillingDuck.cs` with the C# compiler that ships with
+Windows and registers the exe in `helper\` instead. `helper\uninstall.cmd`
+removes the registration.
+
+Without the app the extension works as before: tabs close straight away, and
+the popup offers the app instead of the duck's controls (on Windows only).
+
+### Releasing the duck app
+
+Run `helper\install.cmd`, then attach `helper\KillingDuck.exe` to a new GitHub
+release. The popup links to `releases/latest`, so the newest release must
+always carry the exe.
 
 ### Playing with the duck
 
@@ -111,7 +128,8 @@ the tab. A spared tab is safe for 30 minutes. Chrome's
 
 The extension's ID is pinned by the `key` field in `manifest.json`
 (`foifgpacdfdginklojklodfnoljjhgkj`), because the helper registration only
-accepts the IDs listed in `helper/install.ps1`.
+accepts the IDs listed in `helper/install.ps1` (and `Setup.ExtensionIds` in
+`KillingDuck.cs`).
 
 ## Publishing to the Chrome Web Store
 

@@ -373,6 +373,18 @@ h1 {
   background: #fff;
 }
 
+.get-app {
+  text-align: center;
+  text-decoration: none;
+}
+
+.offer-note {
+  margin: 6px 0 10px;
+  font-size: 9px;
+  line-height: 1.4;
+  color: #77674f;
+}
+
 .section-header {
   display: flex;
   align-items: center;
