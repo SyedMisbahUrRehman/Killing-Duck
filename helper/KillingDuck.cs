@@ -528,7 +528,7 @@ namespace KillingDuck
             for (AutomationElement c = walker.GetFirstChild(el); c != null; c = walker.GetNextSibling(c))
             {
                 AutomationElement.AutomationElementInformation info = c.Current;
-                if (info.ControlType == ControlType.Tab && info.ClassName == "TabContainerImpl") return c;
+                if (info.ControlType == ControlType.Tab && (info.ClassName == "TabContainerImpl" || info.ClassName == "TabContainer")) return c;
                 if (info.ControlType == ControlType.Document) continue;
                 if (info.ClassName == "MultiContentsView" || info.ClassName == "Chrome_RenderWidgetHostHWND") continue;
                 var found = FindContainer(c, depth + 1);
